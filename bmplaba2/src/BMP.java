@@ -84,6 +84,52 @@ public class BMP {
         System.out.println("File without " + componentToRemove + " saved as: " + outputFileName);
     }
 
+    public void createBitSliceImages() {
+        String baseFileName = fileName.replace(".bmp", "_bit_slice");
+
+        try (FileInputStream fileInputStream = new FileInputStream(fileName)) {
+            byte[] header = new byte[HEADER_SIZE];
+            fileInputStream.read(header);
+
+            int width = byteArrayToInt(header, 18);
+            int height = byteArrayToInt(header, 22);
+
+            for (int i = 0; i < 8; i++) {
+                String outputFileName = baseFileName + i + ".bmp";
+                try (FileOutputStream fileOutputStream = new FileOutputStream(outputFileName)) {
+                    fileOutputStream.write(header);
+
+                    for (int y = 0; y < height; y++) {
+                        for (int x = 0; x < width; x++) {
+                            byte[] pixel = new byte[PIXEL_SIZE];
+                            fileInputStream.read(pixel);
+
+                            int cut = getBit(pixel[0], i);
+
+                            byte[] newPixel = {(byte) cut, (byte) cut, (byte) cut};
+                            fileOutputStream.write(newPixel);
+                        }
+                    }
+
+                    System.out.println("Bit slice image saved as: " + outputFileName);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                // Move the file input stream position back to the beginning for the next iteration
+                fileInputStream.getChannel().position(HEADER_SIZE);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static int getBit(byte b, int number) {
+        return ((b >> number) & 1) * 255;
+    }
+
+
     private static int byteArrayToInt(byte[] bytes, int offset) {
         return ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
     }
